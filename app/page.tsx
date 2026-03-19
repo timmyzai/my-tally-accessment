@@ -1,63 +1,63 @@
-import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#0c0e14] px-6">
+      <main className="flex w-full max-w-2xl flex-col items-center gap-12 text-center">
+        {/* Logo / Title */}
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-600 text-2xl font-bold text-white">
+            TA
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
+            Tally Assessment
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="max-w-md text-lg leading-relaxed text-zinc-400">
+            An invite-based candidate assessment platform. Create question
+            banks, build assessments, send invite links, and review results
+            — all from one dashboard.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        {/* Feature highlights */}
+        <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
+          {[
+            {
+              title: "Question Bank",
+              desc: "50 pre-seeded technical questions with easy management",
+            },
+            {
+              title: "Timed Assessments",
+              desc: "Configurable duration with auto-submit on expiry",
+            },
+            {
+              title: "Instant Results",
+              desc: "Automatic scoring with detailed breakdowns",
+            },
+          ].map((f) => (
+            <div
+              key={f.title}
+              className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 text-left"
+            >
+              <h3 className="mb-1 text-sm font-semibold text-violet-400">
+                {f.title}
+              </h3>
+              <p className="text-sm leading-relaxed text-zinc-500">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <div className="flex flex-col items-center gap-4">
+          <Link
+            href="/admin"
+            className="inline-flex h-12 items-center justify-center rounded-full bg-violet-600 px-8 text-sm font-medium text-white transition-colors hover:bg-violet-500"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Open Admin Dashboard
+          </Link>
+          <p className="text-sm text-zinc-600">
+            Candidates access assessments via unique invite links.
+          </p>
         </div>
       </main>
     </div>
