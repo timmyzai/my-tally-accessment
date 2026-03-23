@@ -9,7 +9,8 @@ export async function GET() {
     return NextResponse.json({ questionSets });
   } catch (error) {
     console.error("Error fetching question sets:", error);
-    return NextResponse.json({ error: "Failed to fetch question sets" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: "Failed to fetch question sets", detail: message }, { status: 500 });
   }
 }
 
