@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { db } from "@/lib/db";
 import { Invite } from "@/lib/types";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const invites = await db.getAllInvites();
 
@@ -22,10 +22,14 @@ export async function GET() {
     const assessmentMap = new Map(assessments.map((a) => [a.assessmentId, a]));
     const candidateMap = new Map(candidates.map((c) => [c.candidateId, c]));
 
+    const host = request.headers.get("host") ?? "localhost:3000";
+    const protocol = host.includes("localhost") ? "http" : "https";
+    const baseUrl = `${protocol}://${host}`;
+
     const enrichedInvites = invites.map((invite) => {
       const assessment = assessmentMap.get(invite.assessmentId);
       const candidate = candidateMap.get(invite.candidateId);
-      const link = `${process.env.NEXT_PUBLIC_BASE_URL}/assessment?token=${invite.token}`;
+      const link = `${baseUrl}/assessment?token=${invite.token}`;
       return {
         ...invite,
         assessmentTitle: assessment?.title ?? null,
@@ -61,6 +65,10 @@ export async function POST(request: Request) {
       );
     }
 
+    const host = request.headers.get("host") ?? "localhost:3000";
+    const protocol = host.includes("localhost") ? "http" : "https";
+    const baseUrl = `${protocol}://${host}`;
+
     const token = uuidv4();
     const invite: Invite = {
       inviteId: uuidv4(),
@@ -72,7 +80,7 @@ export async function POST(request: Request) {
     };
 
     await db.createInvite(invite);
-    const link = `${process.env.NEXT_PUBLIC_BASE_URL}/assessment?token=${token}`;
+    const link = `${baseUrl}/assessment?token=${token}`;
 
     return NextResponse.json({ ...invite, link }, { status: 201 });
   } catch (error) {
