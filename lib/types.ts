@@ -32,7 +32,7 @@ export interface Invite {
   assessmentId: string;
   candidateId: string;
   token: string;
-  status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+  status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "REVOKED";
   assignedQuestionIds?: string[];
   startTime?: string;
   endTime?: string;

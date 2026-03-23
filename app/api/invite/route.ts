@@ -46,6 +46,42 @@ export async function GET(request: Request) {
   }
 }
 
+export async function DELETE(request: Request) {
+  try {
+    const { inviteId } = await request.json();
+
+    if (!inviteId || typeof inviteId !== "string") {
+      return NextResponse.json({ error: "inviteId is required" }, { status: 400 });
+    }
+
+    const invite = await db.getInviteById(inviteId);
+    if (!invite) {
+      return NextResponse.json({ error: "Invite not found" }, { status: 404 });
+    }
+
+    if (invite.status === "IN_PROGRESS") {
+      return NextResponse.json(
+        { error: "Cannot revoke an in-progress assessment" },
+        { status: 409 }
+      );
+    }
+
+    if (invite.status === "REVOKED") {
+      return NextResponse.json(
+        { error: "Invite is already revoked" },
+        { status: 409 }
+      );
+    }
+
+    await db.updateInviteStatus(inviteId, "REVOKED");
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error revoking invite:", error);
+    return NextResponse.json({ error: "Failed to revoke invite" }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const { assessmentId, candidateId } = await request.json();
@@ -62,6 +98,25 @@ export async function POST(request: Request) {
             "assessmentId and candidateId are required and must be non-empty strings",
         },
         { status: 400 }
+      );
+    }
+
+    // Check for existing active invite (NOT_STARTED or IN_PROGRESS)
+    const allInvites = await db.getAllInvites();
+    const activeInvite = allInvites.find(
+      (i) =>
+        i.candidateId === candidateId &&
+        i.assessmentId === assessmentId &&
+        (i.status === "NOT_STARTED" || i.status === "IN_PROGRESS")
+    );
+    if (activeInvite) {
+      return NextResponse.json(
+        {
+          error: `This candidate already has an active invite (${
+            activeInvite.status === "NOT_STARTED" ? "Not Started" : "In Progress"
+          }) for this assessment.`,
+        },
+        { status: 409 }
       );
     }
 

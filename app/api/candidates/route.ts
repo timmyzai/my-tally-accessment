@@ -24,6 +24,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const existing = await db.getAllCandidates();
+    if (existing.some((c) => c.email.toLowerCase() === email.toLowerCase())) {
+      return NextResponse.json(
+        { error: "A candidate with this email already exists." },
+        { status: 409 }
+      );
+    }
+
     const candidate: Candidate = {
       candidateId: uuidv4(),
       name,

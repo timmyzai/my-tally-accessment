@@ -13,6 +13,13 @@ export async function GET(
       return NextResponse.json({ error: "Token not found" }, { status: 404 });
     }
 
+    if (invite.status === "REVOKED") {
+      return NextResponse.json(
+        { error: "This assessment link has been revoked." },
+        { status: 403 }
+      );
+    }
+
     if (invite.status === "NOT_STARTED") {
       const [assessment, candidate] = await Promise.all([
         db.getAssessmentById(invite.assessmentId),

@@ -13,9 +13,11 @@ export default function QuestionNav({
   currentIndex,
   onNavigate,
 }: QuestionNavProps) {
-  const answeredCount = Object.keys(answers).length;
+  const isAnswered = (qId: string) =>
+    answers[qId] !== undefined && answers[qId].trim().length > 0;
+  const answeredCount = questions.filter((q) => isAnswered(q.questionId)).length;
   const requiredUnansweredCount = questions.filter(
-    (q) => !q.isOptional && !(q.questionId in answers)
+    (q) => !q.isOptional && !isAnswered(q.questionId)
   ).length;
 
   return (
@@ -59,7 +61,7 @@ export default function QuestionNav({
         </div>
         <div className="flex flex-wrap gap-2">
           {questions.map((q, idx) => {
-            const isAnswered = q.questionId in answers;
+            const answered = isAnswered(q.questionId);
             const isCurrent = idx === currentIndex;
             const isRequired = !q.isOptional;
 
@@ -68,7 +70,7 @@ export default function QuestionNav({
             let borderStyle: string;
             let textColor: string;
 
-            if (isAnswered) {
+            if (answered) {
               bg = "rgba(16, 185, 129, 0.12)";
               borderStyle = "1px solid rgba(16, 185, 129, 0.25)";
               textColor = "#34d399";
@@ -95,23 +97,23 @@ export default function QuestionNav({
                 style={{
                   background: bg,
                   border: borderStyle,
-                  color: isCurrent && !isAnswered
+                  color: isCurrent && !answered
                     ? "#c4b5fd"
                     : textColor,
                   boxShadow: isCurrent
                     ? "0 0 0 2px #06060a, 0 0 0 4px #8b5cf6, 0 0 16px rgba(139, 92, 246, 0.25)"
-                    : isAnswered
+                    : answered
                       ? "0 0 12px rgba(16, 185, 129, 0.1)"
                       : "none",
                 }}
                 onMouseEnter={(e) => {
-                  if (!isCurrent && !isAnswered) {
+                  if (!isCurrent && !answered) {
                     e.currentTarget.style.background = "rgba(255, 255, 255, 0.06)";
                     e.currentTarget.style.color = "rgba(203, 213, 225, 0.8)";
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (!isCurrent && !isAnswered) {
+                  if (!isCurrent && !answered) {
                     e.currentTarget.style.background = bg;
                     e.currentTarget.style.color = textColor;
                   }

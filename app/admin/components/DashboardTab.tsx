@@ -37,7 +37,7 @@ interface EnrichedInvite {
   assessmentId: string;
   candidateId: string;
   token: string;
-  status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+  status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "REVOKED";
   assessmentTitle: string | null;
   candidateName: string | null;
   candidateEmail: string | null;
@@ -154,6 +154,7 @@ export default function DashboardTab() {
 
   /* ---- Invites copy ---- */
   const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
+  const [revokingInviteId, setRevokingInviteId] = useState<string | null>(null);
 
   /* ================================================================ */
   /*  Data Fetching                                                    */
@@ -258,8 +259,8 @@ export default function DashboardTab() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newCandName, email: newCandEmail }),
       });
-      if (!res.ok) throw new Error();
       const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to create candidate");
       // API returns candidate fields directly
       const created: Candidate = {
         candidateId: data.candidateId,
@@ -273,8 +274,8 @@ export default function DashboardTab() {
       setNewCandName("");
       setNewCandEmail("");
       setShowCandidateDropdown(false);
-    } catch {
-      setError("Failed to create candidate");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create candidate");
     } finally {
       setCreatingCandidate(false);
     }
@@ -296,8 +297,8 @@ export default function DashboardTab() {
           candidateId: selectedCandidate.candidateId,
         }),
       });
-      if (!res.ok) throw new Error();
       const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to create invite");
       const link = data.link ?? "";
       setSuccessLink(link);
       if (link) {
@@ -312,8 +313,8 @@ export default function DashboardTab() {
       setSelectedCandidate(null);
       setCandidateSearch("");
       await fetchData();
-    } catch {
-      setError("Failed to create invite");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create invite");
     } finally {
       setSending(false);
     }
@@ -336,6 +337,32 @@ export default function DashboardTab() {
       setTimeout(() => setCopiedInviteId(null), 2000);
     } catch {
       /* noop */
+    }
+  }
+
+  async function handleRevokeInvite(inviteId: string) {
+    if (revokingInviteId) return;
+    setRevokingInviteId(inviteId);
+    try {
+      const res = await fetch("/api/invite", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inviteId }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setError(body?.error || "Failed to revoke invite");
+        return;
+      }
+      setInvites((prev) =>
+        prev.map((inv) =>
+          inv.inviteId === inviteId ? { ...inv, status: "REVOKED" as const } : inv
+        )
+      );
+    } catch {
+      setError("Failed to revoke invite");
+    } finally {
+      setRevokingInviteId(null);
     }
   }
 
@@ -969,13 +996,14 @@ export default function DashboardTab() {
                   <th className={thClass}>Status</th>
                   <th className={thClass}>Link</th>
                   <th className={thClass}>Created</th>
+                  <th className={thClass}></th>
                 </tr>
               </thead>
               <tbody>
                 {invites.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-6 py-12 text-center text-sm text-slate-500"
                     >
                       No invites yet. Use the form above to send one.
@@ -1054,6 +1082,18 @@ export default function DashboardTab() {
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-500">
                         {new Date(inv.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        {inv.status === "NOT_STARTED" && (
+                          <button
+                            type="button"
+                            onClick={() => handleRevokeInvite(inv.inviteId)}
+                            disabled={revokingInviteId === inv.inviteId}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-1.5 text-xs font-medium text-red-400 transition-all duration-300 hover:bg-red-500/10 hover:border-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {revokingInviteId === inv.inviteId ? "Revoking..." : "Revoke"}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))

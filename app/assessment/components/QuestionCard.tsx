@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+
 interface QuestionData {
   questionId: string;
   questionText: string;
@@ -22,6 +24,11 @@ export default function QuestionCard({
   onAnswer,
 }: QuestionCardProps) {
   const answerValue = currentAnswer ?? "";
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, [question.questionId]);
 
   return (
     <div className="w-full max-w-3xl mx-auto">
@@ -100,6 +107,7 @@ export default function QuestionCard({
         }}
       >
         <textarea
+          ref={textareaRef}
           value={answerValue}
           onChange={(e) => onAnswer(e.target.value)}
           placeholder="Write your answer here..."

@@ -1,7 +1,7 @@
 "use client";
 
 interface StatusBadgeProps {
-  status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+  status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "REVOKED";
 }
 
 const config: Record<
@@ -26,6 +26,12 @@ const config: Record<
     text: "text-emerald-400",
     glow: "shadow-[0_0_12px_rgba(16,185,129,0.15)]",
   },
+  REVOKED: {
+    label: "Revoked",
+    bg: "bg-red-500/10",
+    text: "text-red-400",
+    glow: "",
+  },
 };
 
 export default function StatusBadge({ status }: StatusBadgeProps) {
@@ -40,6 +46,8 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
             ? "bg-slate-400"
             : status === "IN_PROGRESS"
             ? "bg-blue-400 animate-pulse"
+            : status === "REVOKED"
+            ? "bg-red-400"
             : "bg-emerald-400"
         }`}
       />
