@@ -50,7 +50,7 @@ interface EnrichedInvite {
 /* ------------------------------------------------------------------ */
 
 const selectClass =
-  "w-full rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-gray-100 outline-none transition-all duration-300 focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 focus:bg-white/[0.05] backdrop-blur-sm";
+  "w-full rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-gray-100 outline-none transition-all duration-300 focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 focus:bg-white/[0.05] backdrop-blur-sm [&>option]:bg-slate-900 [&>option]:text-gray-100";
 
 const thClass =
   "px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent";
@@ -127,6 +127,7 @@ export default function DashboardTab() {
   const [newAssNumQ, setNewAssNumQ] = useState(20);
   const [newAssDuration, setNewAssDuration] = useState(20);
   const [creatingAssessment, setCreatingAssessment] = useState(false);
+  const [showEditAssessment, setShowEditAssessment] = useState(false);
 
   /* ---- Step 2: Candidate ---- */
   const [candidateSearch, setCandidateSearch] = useState("");
@@ -235,6 +236,7 @@ export default function DashboardTab() {
       await fetchData();
       if (newId) setSelectedAssessmentId(newId);
       setShowNewAssessment(false);
+      setShowEditAssessment(false);
       setNewAssTitle("");
       setNewAssQsId("");
       setNewAssNumQ(20);
@@ -440,7 +442,21 @@ export default function DashboardTab() {
               </div>
               <button
                 type="button"
-                onClick={() => setShowNewAssessment(!showNewAssessment)}
+                onClick={() => {
+                  if (!showNewAssessment) {
+                    // Auto-fill title with timestamp
+                    const n = new Date();
+                    const d = `${n.getFullYear()}${String(n.getMonth()+1).padStart(2,"0")}${String(n.getDate()).padStart(2,"0")}`;
+                    const t = `${String(n.getHours()).padStart(2,"0")}${String(n.getMinutes()).padStart(2,"0")}`;
+                    setNewAssTitle(`Assessment-${d}-${t}`);
+                    // Auto-select latest question set
+                    if (questionSets.length > 0) {
+                      const sorted = [...questionSets].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+                      setNewAssQsId(sorted[0].questionSetId);
+                    }
+                  }
+                  setShowNewAssessment(!showNewAssessment);
+                }}
                 className="shrink-0 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-3 text-xs font-semibold text-violet-300 transition-all duration-300 hover:bg-violet-500/20 hover:text-violet-200"
               >
                 {showNewAssessment ? "Cancel" : "+ New"}
@@ -450,50 +466,70 @@ export default function DashboardTab() {
             {/* inline new assessment form */}
             {showNewAssessment && (
               <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-3">
-                <FormInput
-                  label="Title"
-                  value={newAssTitle}
-                  onChange={(e) => setNewAssTitle(e.target.value)}
-                  placeholder="e.g. Frontend Developer Assessment"
-                  required
-                />
-                <div>
-                  <label className="block text-sm font-medium text-slate-300/90 mb-1.5 tracking-wide">
-                    Question Set
-                  </label>
-                  <select
-                    value={newAssQsId}
-                    onChange={(e) => setNewAssQsId(e.target.value)}
-                    className={selectClass}
+                {/* Prefilled summary */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-300">
+                  <span><span className="text-slate-500">Title:</span> {newAssTitle}</span>
+                  <span><span className="text-slate-500">Set:</span> {qsName(newAssQsId)}</span>
+                  <span><span className="text-slate-500">Qs:</span> {newAssNumQ}</span>
+                  <span><span className="text-slate-500">Duration:</span> {newAssDuration}min</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowEditAssessment(!showEditAssessment)}
+                    className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
                   >
-                    <option value="">Select question set...</option>
-                    {questionSets.map((qs) => (
-                      <option key={qs.questionSetId} value={qs.questionSetId}>
-                        {qs.name}
-                      </option>
-                    ))}
-                  </select>
+                    {showEditAssessment ? "Hide" : "Edit"}
+                  </button>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <FormInput
-                    label="Number of Questions"
-                    type="number"
-                    value={newAssNumQ}
-                    onChange={(e) => setNewAssNumQ(Number(e.target.value))}
-                    min={1}
-                  />
-                  <FormInput
-                    label="Duration (min)"
-                    type="number"
-                    value={newAssDuration}
-                    onChange={(e) => setNewAssDuration(Number(e.target.value))}
-                    min={1}
-                  />
-                </div>
+
+                {/* Editable fields — hidden by default */}
+                {showEditAssessment && (
+                  <div className="space-y-3 pt-2 border-t border-white/[0.06]">
+                    <FormInput
+                      label="Title"
+                      value={newAssTitle}
+                      onChange={(e) => setNewAssTitle(e.target.value)}
+                      placeholder="e.g. Frontend Developer Assessment"
+                      required
+                    />
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300/90 mb-1.5 tracking-wide">
+                        Question Set
+                      </label>
+                      <select
+                        value={newAssQsId}
+                        onChange={(e) => setNewAssQsId(e.target.value)}
+                        className={selectClass}
+                      >
+                        <option value="">Select question set...</option>
+                        {questionSets.map((qs) => (
+                          <option key={qs.questionSetId} value={qs.questionSetId}>
+                            {qs.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormInput
+                        label="Number of Questions"
+                        type="number"
+                        value={newAssNumQ}
+                        onChange={(e) => setNewAssNumQ(Number(e.target.value))}
+                        min={1}
+                      />
+                      <FormInput
+                        label="Duration (min)"
+                        type="number"
+                        value={newAssDuration}
+                        onChange={(e) => setNewAssDuration(Number(e.target.value))}
+                        min={1}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <GradientButton
                   onClick={handleCreateAssessment}
                   disabled={creatingAssessment || !newAssTitle || !newAssQsId}
-                  className="mt-1"
                 >
                   {creatingAssessment ? "Creating..." : "Create"}
                 </GradientButton>
@@ -552,7 +588,7 @@ export default function DashboardTab() {
                 />
 
                 {showCandidateDropdown && (
-                  <div className="absolute z-20 mt-1 w-full max-h-52 overflow-y-auto rounded-xl border border-white/[0.08] bg-slate-900/95 backdrop-blur-xl shadow-2xl">
+                  <div className="absolute z-20 mt-1 w-full max-h-52 overflow-y-auto rounded-xl border border-white/[0.08] bg-slate-900/90 backdrop-blur-2xl shadow-2xl shadow-black/30">
                     {filteredCandidates.length > 0 ? (
                       filteredCandidates.map((c) => (
                         <button
