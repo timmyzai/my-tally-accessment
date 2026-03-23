@@ -1,68 +1,26 @@
 import { NextResponse } from "next/server";
-import {
-  ScanCommand,
-  PutCommand,
-  BatchGetCommand,
-} from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from "uuid";
-import { docClient, Tables } from "@/lib/dynamodb";
-import { Invite, Assessment, Candidate } from "@/lib/types";
+import { db } from "@/lib/db";
+import { Invite } from "@/lib/types";
 
 export async function GET() {
   try {
-    const result = await docClient.send(
-      new ScanCommand({ TableName: Tables.Invites })
-    );
-    const invites = (result.Items ?? []) as Invite[];
+    const invites = await db.getAllInvites();
 
     if (invites.length === 0) {
       return NextResponse.json({ invites: [] });
     }
 
-    // Collect unique assessmentIds and candidateIds
     const assessmentIds = [...new Set(invites.map((i) => i.assessmentId))];
     const candidateIds = [...new Set(invites.map((i) => i.candidateId))];
 
-    // Batch fetch assessments
-    const assessmentKeys = assessmentIds.map((id) => ({ assessmentId: id }));
-    const candidateKeys = candidateIds.map((id) => ({ candidateId: id }));
-
-    const [assessmentResult, candidateResult] = await Promise.all([
-      assessmentKeys.length > 0
-        ? docClient.send(
-            new BatchGetCommand({
-              RequestItems: {
-                [Tables.Assessments]: { Keys: assessmentKeys },
-              },
-            })
-          )
-        : null,
-      candidateKeys.length > 0
-        ? docClient.send(
-            new BatchGetCommand({
-              RequestItems: {
-                [Tables.Candidates]: { Keys: candidateKeys },
-              },
-            })
-          )
-        : null,
+    const [assessments, candidates] = await Promise.all([
+      db.getAssessmentsByIds(assessmentIds),
+      db.getCandidatesByIds(candidateIds),
     ]);
 
-    const assessmentMap = new Map<string, Assessment>();
-    if (assessmentResult?.Responses?.[Tables.Assessments]) {
-      for (const item of assessmentResult.Responses[Tables.Assessments]) {
-        const a = item as Assessment;
-        assessmentMap.set(a.assessmentId, a);
-      }
-    }
-
-    const candidateMap = new Map<string, Candidate>();
-    if (candidateResult?.Responses?.[Tables.Candidates]) {
-      for (const item of candidateResult.Responses[Tables.Candidates]) {
-        const c = item as Candidate;
-        candidateMap.set(c.candidateId, c);
-      }
-    }
+    const assessmentMap = new Map(assessments.map((a) => [a.assessmentId, a]));
+    const candidateMap = new Map(candidates.map((c) => [c.candidateId, c]));
 
     const enrichedInvites = invites.map((invite) => {
       const assessment = assessmentMap.get(invite.assessmentId);
@@ -113,13 +71,7 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString(),
     };
 
-    await docClient.send(
-      new PutCommand({
-        TableName: Tables.Invites,
-        Item: invite,
-      })
-    );
-
+    await db.createInvite(invite);
     const link = `${process.env.NEXT_PUBLIC_BASE_URL}/assessment?token=${token}`;
 
     return NextResponse.json({ ...invite, link }, { status: 201 });

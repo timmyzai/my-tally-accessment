@@ -112,7 +112,6 @@ export default function InvitesTab() {
       <div className="flex items-center justify-between mb-6">
         <h2
           className="text-xl font-bold bg-gradient-to-r from-gray-100 to-slate-300 bg-clip-text text-transparent"
-          style={{ fontFamily: "var(--font-outfit), sans-serif" }}
         >
           Invites
           <span className="ml-2 text-sm font-normal text-slate-500">({invites.length})</span>

@@ -139,7 +139,6 @@ function AssessmentContent() {
           </div>
           <h2
             className="text-xl font-bold text-gray-100 mb-3"
-            style={{ fontFamily: "var(--font-outfit), sans-serif" }}
           >
             Unable to Load
           </h2>
@@ -220,7 +219,6 @@ function AssessmentContent() {
 
           <h1
             className="text-4xl sm:text-5xl font-bold text-gray-100 mb-4"
-            style={{ fontFamily: "var(--font-outfit), sans-serif" }}
           >
             {ns.assessmentTitle || "Assessment"}
           </h1>
@@ -246,7 +244,6 @@ function AssessmentContent() {
               </div>
               <p
                 className="text-3xl font-bold text-gray-100"
-                style={{ fontFamily: "var(--font-outfit), sans-serif" }}
               >
                 {ns.totalQuestions}
               </p>
@@ -267,7 +264,6 @@ function AssessmentContent() {
               </div>
               <p
                 className="text-3xl font-bold text-gray-100"
-                style={{ fontFamily: "var(--font-outfit), sans-serif" }}
               >
                 {ns.durationMinutes ?? "\u2014"}<span className="text-base font-normal text-slate-500 ml-1">min</span>
               </p>
@@ -284,7 +280,6 @@ function AssessmentContent() {
           >
             <h3
               className="text-xs font-bold text-slate-400 mb-4 uppercase tracking-widest"
-              style={{ fontFamily: "var(--font-outfit), sans-serif" }}
             >
               Instructions
             </h3>

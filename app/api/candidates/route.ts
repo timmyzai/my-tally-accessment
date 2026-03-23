@@ -1,15 +1,11 @@
 import { NextResponse } from "next/server";
-import { ScanCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from "uuid";
-import { docClient, Tables } from "@/lib/dynamodb";
+import { db } from "@/lib/db";
 import { Candidate } from "@/lib/types";
 
 export async function GET() {
   try {
-    const result = await docClient.send(
-      new ScanCommand({ TableName: Tables.Candidates })
-    );
-    const candidates = (result.Items ?? []) as Candidate[];
+    const candidates = await db.getAllCandidates();
     return NextResponse.json({ candidates });
   } catch (error) {
     console.error("Error fetching candidates:", error);
@@ -39,13 +35,7 @@ export async function POST(request: Request) {
       email,
     };
 
-    await docClient.send(
-      new PutCommand({
-        TableName: Tables.Candidates,
-        Item: candidate,
-      })
-    );
-
+    await db.createCandidate(candidate);
     return NextResponse.json(candidate, { status: 201 });
   } catch (error) {
     console.error("Error creating candidate:", error);

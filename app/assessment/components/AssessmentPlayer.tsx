@@ -122,7 +122,6 @@ export default function AssessmentPlayer({
             </div>
             <span
               className="text-sm font-semibold text-slate-300 hidden sm:block tracking-wide"
-              style={{ fontFamily: "var(--font-outfit), sans-serif" }}
             >
               Assessment
             </span>
@@ -264,7 +263,6 @@ export default function AssessmentPlayer({
 
             <h3
               className="text-xl font-bold text-gray-100 mb-2 text-center"
-              style={{ fontFamily: "var(--font-outfit), sans-serif" }}
             >
               Submit Assessment?
             </h3>

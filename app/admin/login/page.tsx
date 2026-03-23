@@ -63,7 +63,6 @@ export default function AdminLoginPage() {
 
         <h1
           className="text-2xl font-bold text-center text-gray-100 mb-2"
-          style={{ fontFamily: "var(--font-outfit), sans-serif" }}
         >
           Admin Login
         </h1>

@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { docClient, Tables } from "@/lib/dynamodb";
-import { Invite, Assessment, Answer } from "@/lib/types";
-import { getQuestionsByIds, computeScore } from "@/lib/helpers";
+import { db } from "@/lib/db";
+import { computeScore } from "@/lib/helpers";
 
 export async function GET(
   _request: Request,
@@ -11,52 +9,25 @@ export async function GET(
   try {
     const { inviteId } = await params;
 
-    // Fetch the invite
-    const inviteResult = await docClient.send(
-      new GetCommand({
-        TableName: Tables.Invites,
-        Key: { inviteId },
-      })
-    );
-
-    if (!inviteResult.Item) {
+    const invite = await db.getInviteById(inviteId);
+    if (!invite) {
       return NextResponse.json({ error: "Invite not found" }, { status: 404 });
     }
 
-    const invite = inviteResult.Item as Invite;
+    const [answers, assessment] = await Promise.all([
+      db.getAnswersByAttemptId(inviteId),
+      db.getAssessmentById(invite.assessmentId),
+    ]);
 
-    // Fetch answers for this invite (attemptId = inviteId)
-    const answersResult = await docClient.send(
-      new QueryCommand({
-        TableName: Tables.Answers,
-        KeyConditionExpression: "attemptId = :attemptId",
-        ExpressionAttributeValues: { ":attemptId": inviteId },
-      })
-    );
-
-    const answers = (answersResult.Items ?? []) as Answer[];
-
-    // Fetch the assessment
-    const assessmentResult = await docClient.send(
-      new GetCommand({
-        TableName: Tables.Assessments,
-        Key: { assessmentId: invite.assessmentId },
-      })
-    );
-
-    if (!assessmentResult.Item) {
+    if (!assessment) {
       return NextResponse.json(
         { error: "Assessment not found" },
         { status: 404 }
       );
     }
 
-    const assessment = assessmentResult.Item as Assessment;
+    const questions = await db.getQuestionsByIds(assessment.questionIds);
 
-    // Fetch all questions for this assessment
-    const questions = await getQuestionsByIds(assessment.questionIds);
-
-    // Compute score with breakdown
     const { score, totalQuestions, answeredCount, breakdown } = computeScore(
       assessment.questionIds,
       questions,

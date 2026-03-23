@@ -1,17 +1,3 @@
-import { Outfit, Plus_Jakarta_Sans } from "next/font/google";
-
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-});
-
-const plusJakarta = Plus_Jakarta_Sans({
-  variable: "--font-plus-jakarta",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
 export const metadata = {
   title: "Admin Dashboard",
   description: "Tally Assessment Admin",
@@ -24,9 +10,9 @@ export default function AdminLayout({
 }) {
   return (
     <div
-      className={`${outfit.variable} ${plusJakarta.variable} relative min-h-screen text-gray-100`}
+      className="relative min-h-screen text-gray-100"
       style={{
-        fontFamily: "var(--font-plus-jakarta), sans-serif",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         background: "linear-gradient(145deg, #06060a 0%, #0c0e18 50%, #080a14 100%)",
       }}
     >

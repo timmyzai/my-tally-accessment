@@ -28,7 +28,6 @@ export default function QuestionNav({
           <span
             className="text-xs font-semibold uppercase tracking-widest"
             style={{
-              fontFamily: "var(--font-outfit), sans-serif",
               color: "rgba(148, 163, 184, 0.6)",
             }}
           >

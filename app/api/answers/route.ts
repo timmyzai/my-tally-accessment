@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import { GetCommand, PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { docClient, Tables } from "@/lib/dynamodb";
-import { Assessment } from "@/lib/types";
-import { getInviteByToken } from "@/lib/helpers";
+import { db } from "@/lib/db";
 
 const VALID_ANSWERS = new Set(["A", "B", "C", "D"]);
 
@@ -24,7 +21,7 @@ export async function PUT(request: Request) {
       );
     }
 
-    const invite = await getInviteByToken(token);
+    const invite = await db.getInviteByToken(token);
     if (!invite) {
       return NextResponse.json({ error: "Token not found" }, { status: 404 });
     }
@@ -43,16 +40,7 @@ export async function PUT(request: Request) {
       : now;
 
     if (now >= endTime) {
-      // Time expired — mark as completed
-      await docClient.send(
-        new UpdateCommand({
-          TableName: Tables.Invites,
-          Key: { inviteId: invite.inviteId },
-          UpdateExpression: "SET #status = :status",
-          ExpressionAttributeNames: { "#status": "status" },
-          ExpressionAttributeValues: { ":status": "COMPLETED" },
-        })
-      );
+      await db.updateInviteStatus(invite.inviteId, "COMPLETED");
       return NextResponse.json(
         { error: "Assessment time has expired" },
         { status: 410 }
@@ -60,14 +48,7 @@ export async function PUT(request: Request) {
     }
 
     // Validate questionId is in the assessment's questionIds
-    const assessmentResult = await docClient.send(
-      new GetCommand({
-        TableName: Tables.Assessments,
-        Key: { assessmentId: invite.assessmentId },
-      })
-    );
-
-    const assessment = assessmentResult.Item as Assessment | undefined;
+    const assessment = await db.getAssessmentById(invite.assessmentId);
     if (!assessment) {
       return NextResponse.json(
         { error: "Assessment not found" },
@@ -82,18 +63,12 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Upsert answer in Answers table
-    await docClient.send(
-      new PutCommand({
-        TableName: Tables.Answers,
-        Item: {
-          attemptId: invite.inviteId,
-          questionId,
-          selectedAnswer,
-          updatedAt: new Date().toISOString(),
-        },
-      })
-    );
+    await db.upsertAnswer({
+      attemptId: invite.inviteId,
+      questionId,
+      selectedAnswer,
+      updatedAt: new Date().toISOString(),
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

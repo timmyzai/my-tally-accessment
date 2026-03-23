@@ -1,6 +1,4 @@
-import { BatchWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from "uuid";
-import { docClient, Tables } from "../lib/dynamodb";
 import type { Question } from "../lib/types";
 
 const now = new Date().toISOString();
@@ -67,30 +65,60 @@ const questions: Question[] = [
   { questionId: uuidv4(), questionText: "What is the difference between `==` and `===` in JavaScript?", optionA: "No difference", optionB: "`==` performs type coercion before comparison; `===` checks value and type without coercion", optionC: "`===` is slower", optionD: "`==` only works with strings", correctAnswer: "B", createdAt: now },
 ];
 
-export async function seedQuestions() {
-  console.log(`   Seeding ${questions.length} questions...`);
+export { questions };
 
-  // BatchWrite supports max 25 items per request
-  for (let i = 0; i < questions.length; i += 25) {
-    const batch = questions.slice(i, i + 25);
-    await docClient.send(
-      new BatchWriteCommand({
-        RequestItems: {
-          [Tables.Questions]: batch.map((q) => ({
-            PutRequest: { Item: q },
-          })),
-        },
-      })
+export async function seedQuestions() {
+  const useMongo = process.env.USE_MONGODB === "true";
+
+  console.log(`   Seeding ${questions.length} questions (${useMongo ? "MongoDB" : "DynamoDB"})...`);
+
+  if (useMongo) {
+    const mongoose = await import("mongoose");
+    const uri = process.env.MONGODB_URI ?? "mongodb://localhost:27017/tally_assessment";
+    await mongoose.default.connect(uri);
+
+    const schema = new mongoose.Schema(
+      {
+        questionId: { type: String, required: true, unique: true },
+        questionText: String, optionA: String, optionB: String,
+        optionC: String, optionD: String, correctAnswer: String, createdAt: String,
+      },
+      { collection: "questions", id: false, versionKey: false }
     );
-    console.log(`   Batch ${Math.floor(i / 25) + 1}: wrote ${batch.length} questions`);
+    const Model = mongoose.default.models.Question || mongoose.default.model("Question", schema);
+    await Model.deleteMany({});
+    await Model.insertMany(questions);
+    await mongoose.default.disconnect();
+  } else {
+    const { BatchWriteCommand } = await import("@aws-sdk/lib-dynamodb");
+    const { DynamoDBClient } = await import("@aws-sdk/client-dynamodb");
+    const { DynamoDBDocumentClient } = await import("@aws-sdk/lib-dynamodb");
+
+    const client = new DynamoDBClient({ region: process.env.AWS_REGION ?? "ap-southeast-5" });
+    const docClient = DynamoDBDocumentClient.from(client, {
+      marshallOptions: { removeUndefinedValues: true },
+    });
+
+    for (let i = 0; i < questions.length; i += 25) {
+      const batch = questions.slice(i, i + 25);
+      await docClient.send(
+        new BatchWriteCommand({
+          RequestItems: {
+            Questions: batch.map((q) => ({ PutRequest: { Item: q } })),
+          },
+        })
+      );
+      console.log(`   Batch ${Math.floor(i / 25) + 1}: wrote ${batch.length} questions`);
+    }
   }
 
   console.log("   Seeding complete.");
 }
 
-// Run standalone if executed directly
 const isMainModule = process.argv[1]?.includes("seed-questions");
 if (isMainModule) {
+  const { config } = require("dotenv");
+  config({ path: ".env.local" });
   seedQuestions().catch((err) => {
     console.error("Failed to seed questions:", err);
     process.exit(1);

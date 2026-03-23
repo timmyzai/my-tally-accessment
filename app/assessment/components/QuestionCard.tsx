@@ -41,7 +41,6 @@ export default function QuestionCard({
         <span
           className="text-sm font-semibold tracking-widest uppercase"
           style={{
-            fontFamily: "var(--font-outfit), sans-serif",
             background: "linear-gradient(90deg, #8b5cf6, #06b6d4)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
@@ -71,7 +70,6 @@ export default function QuestionCard({
       >
         <p
           className="text-xl font-semibold leading-relaxed text-gray-100"
-          style={{ fontFamily: "var(--font-outfit), sans-serif" }}
         >
           {question.questionText}
         </p>

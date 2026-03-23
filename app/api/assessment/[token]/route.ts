@@ -1,13 +1,6 @@
 import { NextResponse } from "next/server";
-import { GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { docClient, Tables } from "@/lib/dynamodb";
-import { Assessment, Candidate, Answer } from "@/lib/types";
-import {
-  getInviteByToken,
-  getQuestionsByIds,
-  getClientQuestions,
-  computeScore,
-} from "@/lib/helpers";
+import { db } from "@/lib/db";
+import { getClientQuestions, computeScore } from "@/lib/helpers";
 
 export async function GET(
   _request: Request,
@@ -16,30 +9,16 @@ export async function GET(
   try {
     const { token } = await params;
 
-    const invite = await getInviteByToken(token);
+    const invite = await db.getInviteByToken(token);
     if (!invite) {
       return NextResponse.json({ error: "Token not found" }, { status: 404 });
     }
 
     if (invite.status === "NOT_STARTED") {
-      // Fetch assessment and candidate for metadata
-      const [assessmentResult, candidateResult] = await Promise.all([
-        docClient.send(
-          new GetCommand({
-            TableName: Tables.Assessments,
-            Key: { assessmentId: invite.assessmentId },
-          })
-        ),
-        docClient.send(
-          new GetCommand({
-            TableName: Tables.Candidates,
-            Key: { candidateId: invite.candidateId },
-          })
-        ),
+      const [assessment, candidate] = await Promise.all([
+        db.getAssessmentById(invite.assessmentId),
+        db.getCandidateById(invite.candidateId),
       ]);
-
-      const assessment = assessmentResult.Item as Assessment | undefined;
-      const candidate = candidateResult.Item as Candidate | undefined;
 
       return NextResponse.json({
         status: invite.status,
@@ -51,14 +30,7 @@ export async function GET(
     }
 
     if (invite.status === "IN_PROGRESS") {
-      // Fetch assessment to get questionIds
-      const assessmentResult = await docClient.send(
-        new GetCommand({
-          TableName: Tables.Assessments,
-          Key: { assessmentId: invite.assessmentId },
-        })
-      );
-      const assessment = assessmentResult.Item as Assessment | undefined;
+      const assessment = await db.getAssessmentById(invite.assessmentId);
       if (!assessment) {
         return NextResponse.json(
           { error: "Assessment not found" },
@@ -66,21 +38,12 @@ export async function GET(
         );
       }
 
-      // Fetch questions (without correctAnswer) and answers in parallel
-      const [questions, answersResult] = await Promise.all([
-        getQuestionsByIds(assessment.questionIds),
-        docClient.send(
-          new QueryCommand({
-            TableName: Tables.Answers,
-            KeyConditionExpression: "attemptId = :attemptId",
-            ExpressionAttributeValues: { ":attemptId": invite.inviteId },
-          })
-        ),
+      const [questions, answers] = await Promise.all([
+        db.getQuestionsByIds(assessment.questionIds),
+        db.getAnswersByAttemptId(invite.inviteId),
       ]);
 
       const clientQuestions = getClientQuestions(questions);
-      const answers = (answersResult.Items ?? []) as Answer[];
-
       const now = Date.now();
       const endTime = invite.endTime ? new Date(invite.endTime).getTime() : now;
       const remainingTime = Math.max(0, Math.floor((endTime - now) / 1000));
@@ -97,13 +60,7 @@ export async function GET(
     }
 
     // COMPLETED
-    const assessmentResult = await docClient.send(
-      new GetCommand({
-        TableName: Tables.Assessments,
-        Key: { assessmentId: invite.assessmentId },
-      })
-    );
-    const assessment = assessmentResult.Item as Assessment | undefined;
+    const assessment = await db.getAssessmentById(invite.assessmentId);
     if (!assessment) {
       return NextResponse.json(
         { error: "Assessment not found" },
@@ -111,18 +68,11 @@ export async function GET(
       );
     }
 
-    const [questions, answersResult] = await Promise.all([
-      getQuestionsByIds(assessment.questionIds),
-      docClient.send(
-        new QueryCommand({
-          TableName: Tables.Answers,
-          KeyConditionExpression: "attemptId = :attemptId",
-          ExpressionAttributeValues: { ":attemptId": invite.inviteId },
-        })
-      ),
+    const [questions, answers] = await Promise.all([
+      db.getQuestionsByIds(assessment.questionIds),
+      db.getAnswersByAttemptId(invite.inviteId),
     ]);
 
-    const answers = (answersResult.Items ?? []) as Answer[];
     const { score, totalQuestions, answeredCount } = computeScore(
       assessment.questionIds,
       questions,

@@ -130,7 +130,6 @@ export default function ScoreScreen({
           </div>
           <h1
             className="text-4xl font-bold text-gray-100 mb-3"
-            style={{ fontFamily: "var(--font-outfit), sans-serif" }}
           >
             {message}
           </h1>
@@ -202,7 +201,6 @@ export default function ScoreScreen({
           <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
             <span
               className="text-5xl font-bold text-white"
-              style={{ fontFamily: "var(--font-outfit), sans-serif" }}
             >
               {displayPercent}
               <span className="text-2xl text-slate-400">%</span>
@@ -224,7 +222,6 @@ export default function ScoreScreen({
               <p
                 className="text-3xl font-bold"
                 style={{
-                  fontFamily: "var(--font-outfit), sans-serif",
                   background: "linear-gradient(135deg, #8b5cf6, #06b6d4)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
@@ -239,7 +236,6 @@ export default function ScoreScreen({
             <div>
               <p
                 className="text-3xl font-bold text-gray-100"
-                style={{ fontFamily: "var(--font-outfit), sans-serif" }}
               >
                 {answeredCount}
               </p>
@@ -250,7 +246,6 @@ export default function ScoreScreen({
             <div>
               <p
                 className="text-3xl font-bold text-gray-100"
-                style={{ fontFamily: "var(--font-outfit), sans-serif" }}
               >
                 {totalQuestions - answeredCount}
               </p>
