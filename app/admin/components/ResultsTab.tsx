@@ -17,13 +17,11 @@ interface EnrichedInvite {
 interface BreakdownItem {
   questionId: string;
   questionText: string;
-  selectedAnswer: string | null;
-  correctAnswer: string;
-  isCorrect: boolean;
+  isOptional: boolean;
+  answerText: string | null;
 }
 
 interface ResultDetail {
-  score: number;
   totalQuestions: number;
   answeredCount: number;
   breakdown: BreakdownItem[];
@@ -108,21 +106,12 @@ export default function ResultsTab() {
           <Spinner label="Loading details..." />
         ) : detail ? (
           <>
-            {/* Score summary */}
-            <div className="mb-8 grid grid-cols-3 gap-4">
+            {/* Summary cards */}
+            <div className="mb-8 grid grid-cols-2 gap-4">
               {[
                 {
-                  label: "Score",
-                  value: detail.score,
-                  suffix: `/${detail.totalQuestions}`,
-                },
-                {
-                  label: "Percentage",
-                  value:
-                    detail.totalQuestions > 0
-                      ? Math.round((detail.score / detail.totalQuestions) * 100)
-                      : 0,
-                  suffix: "%",
+                  label: "Total Questions",
+                  value: detail.totalQuestions,
                 },
                 {
                   label: "Answered",
@@ -138,7 +127,9 @@ export default function ResultsTab() {
                     className="text-3xl font-bold bg-gradient-to-r from-gray-100 to-slate-300 bg-clip-text text-transparent"
                   >
                     {stat.value}
-                    <span className="text-lg text-slate-500">{stat.suffix}</span>
+                    {stat.suffix && (
+                      <span className="text-lg text-slate-500">{stat.suffix}</span>
+                    )}
                   </p>
                 </GlassCard>
               ))}
@@ -149,48 +140,23 @@ export default function ResultsTab() {
               {detail.breakdown.map((item, index) => (
                 <div
                   key={item.questionId}
-                  className={`rounded-2xl border backdrop-blur-xl p-5 transition-all duration-200 ${
-                    item.isCorrect
-                      ? "border-emerald-500/20 bg-emerald-500/[0.03] shadow-[0_0_20px_rgba(16,185,129,0.03)]"
-                      : "border-red-500/20 bg-red-500/[0.03] shadow-[0_0_20px_rgba(239,68,68,0.03)]"
-                  }`}
+                  className="rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-5 transition-all duration-200"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <p className="text-xs text-slate-500 mb-1">Question {index + 1}</p>
-                      <p className="text-sm font-medium text-gray-200 mb-3">{item.questionText}</p>
-                      <div className="flex flex-wrap items-center gap-4 text-sm">
-                        <span className="text-slate-400">
-                          Selected:{" "}
-                          <span
-                            className={`font-medium ${
-                              item.isCorrect ? "text-emerald-400" : "text-red-400"
-                            }`}
-                          >
-                            {item.selectedAnswer ?? "No answer"}
-                          </span>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-xs text-slate-500">Question {index + 1}</p>
+                      {item.isOptional && (
+                        <span className="inline-flex items-center rounded-full bg-white/[0.06] border border-white/[0.08] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                          Optional
                         </span>
-                        <span className="text-slate-400">
-                          Correct:{" "}
-                          <span className="text-emerald-400 font-medium">
-                            {item.correctAnswer}
-                          </span>
-                        </span>
-                      </div>
+                      )}
                     </div>
-                    <div className="shrink-0">
-                      {item.isCorrect ? (
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                          <svg className="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        </div>
+                    <p className="text-sm font-medium text-gray-200 mb-3">{item.questionText}</p>
+                    <div className="text-sm">
+                      {item.answerText ? (
+                        <p className="text-slate-300 whitespace-pre-wrap">{item.answerText}</p>
                       ) : (
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10 border border-red-500/20">
-                          <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </div>
+                        <p className="italic text-slate-500">Not answered</p>
                       )}
                     </div>
                   </div>

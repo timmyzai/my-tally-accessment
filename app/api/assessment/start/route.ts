@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getClientQuestions } from "@/lib/helpers";
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
 
 export async function POST(request: Request) {
   try {
@@ -32,18 +40,27 @@ export async function POST(request: Request) {
 
     // If IN_PROGRESS, return existing data for idempotent resume
     if (invite.status === "IN_PROGRESS") {
-      const questions = await db.getQuestionsByIds(assessment.questionIds);
-      const clientQuestions = getClientQuestions(questions);
+      const questionIds = invite.assignedQuestionIds ?? [];
+      const questions = await db.getQuestionsByIds(questionIds);
 
       return NextResponse.json({
         inviteId: invite.inviteId,
-        questions: clientQuestions,
+        questions: questions.map((q) => ({
+          questionId: q.questionId,
+          questionText: q.questionText,
+          isOptional: q.isOptional,
+        })),
         endTime: invite.endTime,
-        totalQuestions: assessment.questionIds.length,
+        totalQuestions: questionIds.length,
       });
     }
 
-    // NOT_STARTED: start the assessment
+    // NOT_STARTED: randomly select questions from the set
+    const allQuestions = await db.getQuestionsBySetId(assessment.questionSetId);
+    const shuffled = shuffleArray(allQuestions);
+    const selected = shuffled.slice(0, Math.min(assessment.numQuestions, allQuestions.length));
+    const assignedQuestionIds = selected.map((q) => q.questionId);
+
     const now = new Date();
     const endTime = new Date(
       now.getTime() + assessment.durationMinutes * 60 * 1000
@@ -52,7 +69,8 @@ export async function POST(request: Request) {
     const started = await db.startInvite(
       invite.inviteId,
       now.toISOString(),
-      endTime.toISOString()
+      endTime.toISOString(),
+      assignedQuestionIds
     );
 
     if (!started) {
@@ -62,14 +80,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const questions = await db.getQuestionsByIds(assessment.questionIds);
-    const clientQuestions = getClientQuestions(questions);
-
     return NextResponse.json({
       inviteId: invite.inviteId,
-      questions: clientQuestions,
+      questions: selected.map((q) => ({
+        questionId: q.questionId,
+        questionText: q.questionText,
+        isOptional: q.isOptional,
+      })),
       endTime: endTime.toISOString(),
-      totalQuestions: assessment.questionIds.length,
+      totalQuestions: selected.length,
     });
   } catch (error) {
     console.error("Error starting assessment:", error);

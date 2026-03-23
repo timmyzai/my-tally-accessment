@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { computeScore } from "@/lib/helpers";
+import { getAnswerSummary } from "@/lib/helpers";
 
 export async function GET(
   _request: Request,
@@ -14,29 +14,20 @@ export async function GET(
       return NextResponse.json({ error: "Invite not found" }, { status: 404 });
     }
 
-    const [answers, assessment] = await Promise.all([
+    const questionIds = invite.assignedQuestionIds ?? [];
+    const [answers, questions] = await Promise.all([
       db.getAnswersByAttemptId(inviteId),
-      db.getAssessmentById(invite.assessmentId),
+      db.getQuestionsByIds(questionIds),
     ]);
 
-    if (!assessment) {
-      return NextResponse.json(
-        { error: "Assessment not found" },
-        { status: 404 }
-      );
-    }
-
-    const questions = await db.getQuestionsByIds(assessment.questionIds);
-
-    const { score, totalQuestions, answeredCount, breakdown } = computeScore(
-      assessment.questionIds,
+    const { totalQuestions, answeredCount, breakdown } = getAnswerSummary(
+      questionIds,
       questions,
       answers
     );
 
     return NextResponse.json({
       invite,
-      score,
       totalQuestions,
       answeredCount,
       breakdown,

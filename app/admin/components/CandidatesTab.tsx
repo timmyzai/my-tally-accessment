@@ -17,6 +17,14 @@ export default function CandidatesTab() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
 
+  const [editingCandidate, setEditingCandidate] = useState<{
+    candidateId: string;
+    name: string;
+    email: string;
+  } | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
   async function fetchCandidates() {
     try {
       const res = await fetch("/api/candidates");
@@ -59,6 +67,56 @@ export default function CandidatesTab() {
       setError("Failed to create candidate");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleEditSave() {
+    if (!editingCandidate) return;
+    setEditSaving(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/candidates", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          candidateId: editingCandidate.candidateId,
+          name: editingCandidate.name,
+          email: editingCandidate.email,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to update candidate");
+
+      setEditingCandidate(null);
+      await fetchCandidates();
+    } catch {
+      setError("Failed to update candidate");
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function handleDelete(candidateId: string) {
+    if (!window.confirm("Are you sure you want to delete this candidate?")) return;
+
+    setDeleting(candidateId);
+    setError("");
+
+    try {
+      const res = await fetch("/api/candidates", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ candidateId }),
+      });
+
+      if (!res.ok) throw new Error("Failed to delete candidate");
+
+      await fetchCandidates();
+    } catch {
+      setError("Failed to delete candidate");
+    } finally {
+      setDeleting(null);
     }
   }
 
@@ -124,12 +182,15 @@ export default function CandidatesTab() {
               <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
                 Email
               </th>
+              <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-wider bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {candidates.length === 0 ? (
               <tr>
-                <td colSpan={2} className="px-6 py-12 text-center text-sm text-slate-500">
+                <td colSpan={3} className="px-6 py-12 text-center text-sm text-slate-500">
                   No candidates yet. Add one to get started.
                 </td>
               </tr>
@@ -139,8 +200,74 @@ export default function CandidatesTab() {
                   key={c.candidateId}
                   className="border-b border-white/[0.03] transition-colors duration-200 hover:bg-white/[0.02]"
                 >
-                  <td className="px-6 py-4 text-sm font-medium text-gray-200">{c.name}</td>
-                  <td className="px-6 py-4 text-sm text-slate-400">{c.email}</td>
+                  {editingCandidate?.candidateId === c.candidateId ? (
+                    <>
+                      <td className="px-6 py-3">
+                        <FormInput
+                          label=""
+                          value={editingCandidate.name}
+                          onChange={(e) =>
+                            setEditingCandidate({ ...editingCandidate, name: e.target.value })
+                          }
+                          required
+                          placeholder="Full name"
+                        />
+                      </td>
+                      <td className="px-6 py-3">
+                        <FormInput
+                          label=""
+                          type="email"
+                          value={editingCandidate.email}
+                          onChange={(e) =>
+                            setEditingCandidate({ ...editingCandidate, email: e.target.value })
+                          }
+                          required
+                          placeholder="email@example.com"
+                        />
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <GradientButton onClick={handleEditSave} disabled={editSaving}>
+                            {editSaving ? "Saving..." : "Save"}
+                          </GradientButton>
+                          <button
+                            onClick={() => setEditingCandidate(null)}
+                            className="px-3 py-1.5 text-sm rounded-lg border border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/20 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-200">{c.name}</td>
+                      <td className="px-6 py-4 text-sm text-slate-400">{c.email}</td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() =>
+                              setEditingCandidate({
+                                candidateId: c.candidateId,
+                                name: c.name,
+                                email: c.email,
+                              })
+                            }
+                            className="px-3 py-1.5 text-sm rounded-lg border border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/20 transition-colors"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(c.candidateId)}
+                            disabled={deleting === c.candidateId}
+                            className="px-3 py-1.5 text-sm rounded-lg border border-red-500/20 text-red-400 hover:text-red-300 hover:border-red-500/40 transition-colors disabled:opacity-50"
+                          >
+                            {deleting === c.candidateId ? "Deleting..." : "Delete"}
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))
             )}

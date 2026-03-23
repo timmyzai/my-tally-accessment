@@ -15,30 +15,25 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { title, questionIds, durationMinutes } = await request.json();
+    const { title, questionSetId, numQuestions, durationMinutes } = await request.json();
 
-    if (
-      !title ||
-      typeof title !== "string" ||
-      !Array.isArray(questionIds) ||
-      questionIds.length === 0 ||
-      typeof durationMinutes !== "number" ||
-      durationMinutes <= 0
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "title (non-empty string), questionIds (non-empty array), and durationMinutes (> 0) are required",
-        },
-        { status: 400 }
-      );
+    if (!title || typeof title !== "string") {
+      return NextResponse.json({ error: "title is required" }, { status: 400 });
     }
+
+    if (!questionSetId || typeof questionSetId !== "string") {
+      return NextResponse.json({ error: "questionSetId is required" }, { status: 400 });
+    }
+
+    const duration = typeof durationMinutes === "number" && durationMinutes > 0 ? durationMinutes : 20;
+    const num = typeof numQuestions === "number" && numQuestions > 0 ? numQuestions : 20;
 
     const assessment: Assessment = {
       assessmentId: uuidv4(),
       title,
-      questionIds,
-      durationMinutes,
+      questionSetId,
+      numQuestions: num,
+      durationMinutes: duration,
       createdAt: new Date().toISOString(),
     };
 

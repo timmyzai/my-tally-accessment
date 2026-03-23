@@ -7,8 +7,9 @@ import {
   QueryCommand,
   UpdateCommand,
   BatchGetCommand,
+  DeleteCommand,
 } from "@aws-sdk/lib-dynamodb";
-import type { Question, Assessment, Candidate, Invite, Answer } from "@/lib/types";
+import type { Question, Assessment, Candidate, Invite, Answer, QuestionSet } from "@/lib/types";
 import type { DB } from "./interface";
 
 const client = new DynamoDBClient({
@@ -25,12 +26,38 @@ const T = {
   Candidates: "Candidates",
   Invites: "Invites",
   Answers: "Answers",
+  QuestionSets: "QuestionSets",
 } as const;
 
 export const dynamoDB: DB = {
+  // QuestionSets
+  async getAllQuestionSets() {
+    const result = await docClient.send(new ScanCommand({ TableName: T.QuestionSets }));
+    return (result.Items ?? []) as QuestionSet[];
+  },
+  async getQuestionSetById(questionSetId) {
+    const result = await docClient.send(
+      new GetCommand({ TableName: T.QuestionSets, Key: { questionSetId } })
+    );
+    return (result.Item as QuestionSet) ?? null;
+  },
+  async createQuestionSet(questionSet) {
+    await docClient.send(new PutCommand({ TableName: T.QuestionSets, Item: questionSet }));
+  },
+
   // Questions
   async getAllQuestions() {
     const result = await docClient.send(new ScanCommand({ TableName: T.Questions }));
+    return (result.Items ?? []) as Question[];
+  },
+  async getQuestionsBySetId(questionSetId) {
+    const result = await docClient.send(
+      new ScanCommand({
+        TableName: T.Questions,
+        FilterExpression: "questionSetId = :setId",
+        ExpressionAttributeValues: { ":setId": questionSetId },
+      })
+    );
     return (result.Items ?? []) as Question[];
   },
   async createQuestion(question) {
@@ -65,6 +92,25 @@ export const dynamoDB: DB = {
   },
   async createCandidate(candidate) {
     await docClient.send(new PutCommand({ TableName: T.Candidates, Item: candidate }));
+  },
+  async updateCandidate(candidateId, data) {
+    await docClient.send(
+      new UpdateCommand({
+        TableName: T.Candidates,
+        Key: { candidateId },
+        UpdateExpression: "SET #name = :name, email = :email",
+        ExpressionAttributeNames: { "#name": "name" },
+        ExpressionAttributeValues: {
+          ":name": data.name,
+          ":email": data.email,
+        },
+      })
+    );
+  },
+  async deleteCandidate(candidateId) {
+    await docClient.send(
+      new DeleteCommand({ TableName: T.Candidates, Key: { candidateId } })
+    );
   },
 
   // Invites
@@ -104,14 +150,14 @@ export const dynamoDB: DB = {
       })
     );
   },
-  async startInvite(inviteId, startTime, endTime) {
+  async startInvite(inviteId, startTime, endTime, assignedQuestionIds) {
     try {
       await docClient.send(
         new UpdateCommand({
           TableName: T.Invites,
           Key: { inviteId },
           UpdateExpression:
-            "SET #status = :status, startTime = :startTime, endTime = :endTime",
+            "SET #status = :status, startTime = :startTime, endTime = :endTime, assignedQuestionIds = :assignedQuestionIds",
           ConditionExpression: "#status = :notStarted",
           ExpressionAttributeNames: { "#status": "status" },
           ExpressionAttributeValues: {
@@ -119,6 +165,7 @@ export const dynamoDB: DB = {
             ":notStarted": "NOT_STARTED",
             ":startTime": startTime,
             ":endTime": endTime,
+            ":assignedQuestionIds": assignedQuestionIds,
           },
         })
       );

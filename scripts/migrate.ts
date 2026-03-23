@@ -58,7 +58,7 @@ async function runMongoDB(opts: { isFresh: boolean; isSeed: boolean; isStatus: b
   }
 
   // Ensure collections and indexes
-  const collections = ["questions", "assessments", "candidates", "invites", "answers"];
+  const collections = ["questions", "assessments", "candidates", "invites", "answers", "questionSets"];
   for (const name of collections) {
     const existing = await db.listCollections({ name }).toArray();
     if (existing.length === 0) {
@@ -159,7 +159,7 @@ async function runDynamoDB(opts: { isFresh: boolean; isSeed: boolean; isStatus: 
     return;
   }
 
-  const allTables = ["Questions", "Assessments", "Candidates", "Invites", "Answers", MIGRATIONS_TABLE];
+  const allTables = ["Questions", "Assessments", "Candidates", "Invites", "Answers", "QuestionSets", MIGRATIONS_TABLE];
 
   if (opts.isFresh) {
     console.log("Dropping all tables...\n");
@@ -241,6 +241,15 @@ async function runDynamoDB(opts: { isFresh: boolean; isSeed: boolean; isStatus: 
           { AttributeName: "attemptId", AttributeType: "S" },
           { AttributeName: "questionId", AttributeType: "S" },
         ],
+        BillingMode: "PAY_PER_REQUEST",
+      }),
+    },
+    {
+      id: "006", name: "create_question_sets_table",
+      apply: () => createTable({
+        TableName: "QuestionSets",
+        KeySchema: [{ AttributeName: "questionSetId", KeyType: "HASH" }],
+        AttributeDefinitions: [{ AttributeName: "questionSetId", AttributeType: "S" }],
         BillingMode: "PAY_PER_REQUEST",
       }),
     },

@@ -1,14 +1,28 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import type { Question } from "@/lib/types";
 import Spinner from "./Spinner";
 import GlassCard from "./GlassCard";
 import GradientButton from "./GradientButton";
 import FormInput from "./FormInput";
 
+type Question = {
+  questionId: string;
+  questionText: string;
+  isOptional: boolean;
+  questionSetId: string;
+  createdAt: string;
+};
+
+type QuestionSet = {
+  questionSetId: string;
+  name: string;
+  createdAt: string;
+};
+
 export default function QuestionsTab() {
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [questionSets, setQuestionSets] = useState<QuestionSet[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -16,11 +30,8 @@ export default function QuestionsTab() {
 
   // Form state
   const [questionText, setQuestionText] = useState("");
-  const [optionA, setOptionA] = useState("");
-  const [optionB, setOptionB] = useState("");
-  const [optionC, setOptionC] = useState("");
-  const [optionD, setOptionD] = useState("");
-  const [correctAnswer, setCorrectAnswer] = useState<"A" | "B" | "C" | "D">("A");
+  const [isOptional, setIsOptional] = useState(false);
+  const [questionSetId, setQuestionSetId] = useState("");
 
   async function fetchQuestions() {
     try {
@@ -34,17 +45,25 @@ export default function QuestionsTab() {
     }
   }
 
+  async function fetchQuestionSets() {
+    try {
+      const qsRes = await fetch("/api/question-sets");
+      const qsData = await qsRes.json();
+      setQuestionSets(qsData.questionSets ?? []);
+    } catch {
+      setError("Failed to load question sets");
+    }
+  }
+
   useEffect(() => {
     fetchQuestions();
+    fetchQuestionSets();
   }, []);
 
   function resetForm() {
     setQuestionText("");
-    setOptionA("");
-    setOptionB("");
-    setOptionC("");
-    setOptionD("");
-    setCorrectAnswer("A");
+    setIsOptional(false);
+    setQuestionSetId("");
     setShowForm(false);
   }
 
@@ -57,7 +76,7 @@ export default function QuestionsTab() {
       const res = await fetch("/api/questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionText, optionA, optionB, optionC, optionD, correctAnswer }),
+        body: JSON.stringify({ questionText, isOptional, questionSetId }),
       });
 
       if (!res.ok) throw new Error("Failed to create question");
@@ -69,6 +88,11 @@ export default function QuestionsTab() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function getSetName(setId: string): string {
+    const qs = questionSets.find((s) => s.questionSetId === setId);
+    return qs ? qs.name : "-";
   }
 
   if (loading) {
@@ -113,38 +137,37 @@ export default function QuestionsTab() {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                { label: "Option A", value: optionA, setter: setOptionA },
-                { label: "Option B", value: optionB, setter: setOptionB },
-                { label: "Option C", value: optionC, setter: setOptionC },
-                { label: "Option D", value: optionD, setter: setOptionD },
-              ].map((opt) => (
-                <FormInput
-                  key={opt.label}
-                  label={opt.label}
-                  value={opt.value}
-                  onChange={(e) => opt.setter(e.target.value)}
-                  required
-                  placeholder={opt.label}
-                />
-              ))}
-            </div>
-
             <div>
               <label className="block text-sm font-medium text-slate-300/90 mb-1.5 tracking-wide">
-                Correct Answer
+                Question Set
               </label>
               <select
-                value={correctAnswer}
-                onChange={(e) => setCorrectAnswer(e.target.value as "A" | "B" | "C" | "D")}
+                value={questionSetId}
+                onChange={(e) => setQuestionSetId(e.target.value)}
                 className="w-full rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-gray-100 outline-none transition-all duration-300 focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 focus:bg-white/[0.05] backdrop-blur-sm"
               >
-                <option value="A">A</option>
-                <option value="B">B</option>
-                <option value="C">C</option>
-                <option value="D">D</option>
+                <option value="">-- Select a question set --</option>
+                {questionSets.map((qs) => (
+                  <option key={qs.questionSetId} value={qs.questionSetId}>
+                    {qs.name}
+                  </option>
+                ))}
               </select>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isOptional}
+                  onChange={(e) => setIsOptional(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 rounded-full border border-white/[0.06] bg-white/[0.03] peer-checked:bg-gradient-to-r peer-checked:from-violet-500/40 peer-checked:to-cyan-500/40 peer-checked:border-violet-500/30 transition-all duration-300 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full peer-checked:after:bg-white" />
+              </label>
+              <span className="text-sm font-medium text-slate-300/90 tracking-wide">
+                Optional question
+              </span>
             </div>
 
             <GradientButton type="submit" disabled={saving}>
@@ -166,10 +189,10 @@ export default function QuestionsTab() {
                 Question Text
               </th>
               <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
-                Options
+                Set
               </th>
               <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
-                Answer
+                Optional
               </th>
             </tr>
           </thead>
@@ -191,21 +214,18 @@ export default function QuestionsTab() {
                     <span className="line-clamp-2">{q.questionText}</span>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-400">
-                    <div className="flex flex-wrap gap-1.5">
-                      {(["A", "B", "C", "D"] as const).map((key) => (
-                        <span
-                          key={key}
-                          className="inline-block max-w-[120px] truncate rounded-lg bg-white/[0.04] border border-white/[0.04] px-2 py-0.5 text-xs text-slate-300"
-                        >
-                          {key}: {q[`option${key}` as keyof Question] as string}
-                        </span>
-                      ))}
-                    </div>
+                    {getSetName(q.questionSetId)}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/20 to-cyan-500/20 text-xs font-bold text-violet-300 border border-violet-500/20">
-                      {q.correctAnswer}
-                    </span>
+                    {q.isOptional ? (
+                      <span className="inline-flex items-center rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/20 px-2.5 py-0.5 text-xs font-semibold text-amber-300">
+                        Yes
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-lg bg-gradient-to-br from-violet-500/20 to-cyan-500/20 border border-violet-500/20 px-2.5 py-0.5 text-xs font-semibold text-violet-300">
+                        No
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))

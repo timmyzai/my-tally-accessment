@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import type { Question, Assessment, Candidate, Invite, Answer } from "@/lib/types";
+import type { Question, QuestionSet, Assessment, Candidate, Invite, Answer } from "@/lib/types";
 import type { DB } from "./interface";
 
 // --- Connection ---
@@ -17,15 +17,21 @@ async function connect() {
 }
 
 // --- Schemas ---
+const questionSetSchema = new mongoose.Schema(
+  {
+    questionSetId: { type: String, required: true, unique: true },
+    name: String,
+    createdAt: String,
+  },
+  { collection: "questionSets", id: false, versionKey: false }
+);
+
 const questionSchema = new mongoose.Schema(
   {
     questionId: { type: String, required: true, unique: true },
     questionText: String,
-    optionA: String,
-    optionB: String,
-    optionC: String,
-    optionD: String,
-    correctAnswer: String,
+    isOptional: Boolean,
+    questionSetId: String,
     createdAt: String,
   },
   { collection: "questions", id: false, versionKey: false }
@@ -35,7 +41,8 @@ const assessmentSchema = new mongoose.Schema(
   {
     assessmentId: { type: String, required: true, unique: true },
     title: String,
-    questionIds: [String],
+    questionSetId: String,
+    numQuestions: Number,
     durationMinutes: Number,
     createdAt: String,
   },
@@ -58,6 +65,7 @@ const inviteSchema = new mongoose.Schema(
     candidateId: String,
     token: { type: String, unique: true },
     status: String,
+    assignedQuestionIds: [String],
     startTime: String,
     endTime: String,
     createdAt: String,
@@ -69,7 +77,7 @@ const answerSchema = new mongoose.Schema(
   {
     attemptId: { type: String, required: true },
     questionId: { type: String, required: true },
-    selectedAnswer: String,
+    answerText: String,
     updatedAt: String,
   },
   { collection: "answers", id: false, versionKey: false }
@@ -77,6 +85,7 @@ const answerSchema = new mongoose.Schema(
 answerSchema.index({ attemptId: 1, questionId: 1 }, { unique: true });
 
 // --- Models (reuse if already compiled) ---
+const QuestionSetModel = mongoose.models.QuestionSet || mongoose.model("QuestionSet", questionSetSchema);
 const QuestionModel = mongoose.models.Question || mongoose.model("Question", questionSchema);
 const AssessmentModel = mongoose.models.Assessment || mongoose.model("Assessment", assessmentSchema);
 const CandidateModel = mongoose.models.Candidate || mongoose.model("Candidate", candidateSchema);
@@ -94,10 +103,29 @@ function cleanAll<T>(docs: (mongoose.Document | Record<string, unknown>)[]): T[]
 }
 
 export const mongoDB: DB = {
+  // Question Sets
+  async getAllQuestionSets() {
+    await connect();
+    return cleanAll<QuestionSet>(await QuestionSetModel.find().lean());
+  },
+  async getQuestionSetById(questionSetId) {
+    await connect();
+    const doc = await QuestionSetModel.findOne({ questionSetId }).lean();
+    return doc ? clean<QuestionSet>(doc) : null;
+  },
+  async createQuestionSet(questionSet) {
+    await connect();
+    await QuestionSetModel.create(questionSet);
+  },
+
   // Questions
   async getAllQuestions() {
     await connect();
     return cleanAll<Question>(await QuestionModel.find().lean());
+  },
+  async getQuestionsBySetId(questionSetId) {
+    await connect();
+    return cleanAll<Question>(await QuestionModel.find({ questionSetId }).lean());
   },
   async createQuestion(question) {
     await connect();
@@ -133,6 +161,14 @@ export const mongoDB: DB = {
     await connect();
     await CandidateModel.create(candidate);
   },
+  async updateCandidate(candidateId, data) {
+    await connect();
+    await CandidateModel.updateOne({ candidateId }, { $set: data });
+  },
+  async deleteCandidate(candidateId) {
+    await connect();
+    await CandidateModel.deleteOne({ candidateId });
+  },
 
   // Invites
   async getAllInvites() {
@@ -157,11 +193,11 @@ export const mongoDB: DB = {
     await connect();
     await InviteModel.updateOne({ inviteId }, { $set: { status } });
   },
-  async startInvite(inviteId, startTime, endTime) {
+  async startInvite(inviteId, startTime, endTime, assignedQuestionIds) {
     await connect();
     const result = await InviteModel.updateOne(
       { inviteId, status: "NOT_STARTED" },
-      { $set: { status: "IN_PROGRESS", startTime, endTime } }
+      { $set: { status: "IN_PROGRESS", startTime, endTime, assignedQuestionIds } }
     );
     return result.modifiedCount > 0;
   },

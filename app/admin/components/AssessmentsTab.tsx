@@ -1,15 +1,29 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import type { Question, Assessment } from "@/lib/types";
 import Spinner from "./Spinner";
 import GlassCard from "./GlassCard";
 import GradientButton from "./GradientButton";
 import FormInput from "./FormInput";
 
+interface QuestionSet {
+  questionSetId: string;
+  name: string;
+  createdAt: string;
+}
+
+interface Assessment {
+  assessmentId: string;
+  title: string;
+  questionSetId: string;
+  numQuestions: number;
+  durationMinutes: number;
+  createdAt: string;
+}
+
 export default function AssessmentsTab() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [questionSets, setQuestionSets] = useState<QuestionSet[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -17,20 +31,20 @@ export default function AssessmentsTab() {
 
   // Form state
   const [title, setTitle] = useState("");
-  const [durationMinutes, setDurationMinutes] = useState(30);
-  const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(new Set());
-  const [questionFilter, setQuestionFilter] = useState("");
+  const [questionSetId, setQuestionSetId] = useState("");
+  const [numQuestions, setNumQuestions] = useState(20);
+  const [durationMinutes, setDurationMinutes] = useState(20);
 
   async function fetchData() {
     try {
-      const [aRes, qRes] = await Promise.all([
+      const [aRes, qsRes] = await Promise.all([
         fetch("/api/assessments"),
-        fetch("/api/questions"),
+        fetch("/api/question-sets"),
       ]);
       const aData = await aRes.json();
-      const qData = await qRes.json();
+      const qsData = await qsRes.json();
       setAssessments(aData.assessments ?? []);
-      setQuestions(qData.questions ?? []);
+      setQuestionSets(qsData.questionSets ?? []);
     } catch {
       setError("Failed to load data");
     } finally {
@@ -44,16 +58,16 @@ export default function AssessmentsTab() {
 
   function resetForm() {
     setTitle("");
-    setDurationMinutes(30);
-    setSelectedQuestionIds(new Set());
-    setQuestionFilter("");
+    setQuestionSetId("");
+    setNumQuestions(20);
+    setDurationMinutes(20);
     setShowForm(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (selectedQuestionIds.size === 0) {
-      setError("Select at least one question");
+    if (!questionSetId) {
+      setError("Select a question set");
       return;
     }
     setSaving(true);
@@ -65,8 +79,9 @@ export default function AssessmentsTab() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
+          questionSetId,
+          numQuestions,
           durationMinutes,
-          questionIds: Array.from(selectedQuestionIds),
         }),
       });
 
@@ -81,18 +96,10 @@ export default function AssessmentsTab() {
     }
   }
 
-  function toggleQuestion(id: string) {
-    setSelectedQuestionIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  function getQuestionSetName(id: string): string {
+    const qs = questionSets.find((s) => s.questionSetId === id);
+    return qs ? qs.name : "Unknown";
   }
-
-  const filteredQuestions = questions.filter((q) =>
-    q.questionText.toLowerCase().includes(questionFilter.toLowerCase())
-  );
 
   if (loading) {
     return <Spinner label="Loading assessments..." />;
@@ -130,6 +137,35 @@ export default function AssessmentsTab() {
                 required
                 placeholder="Assessment title"
               />
+              <div>
+                <label className="block text-sm font-medium text-slate-300/90 mb-1.5 tracking-wide">
+                  Question Set
+                </label>
+                <select
+                  value={questionSetId}
+                  onChange={(e) => setQuestionSetId(e.target.value)}
+                  required
+                  className="w-full rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-gray-100 placeholder-slate-500 outline-none transition-all duration-300 focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 focus:bg-white/[0.05] backdrop-blur-sm"
+                >
+                  <option value="" className="bg-slate-900 text-slate-400">Select a question set...</option>
+                  {questionSets.map((qs) => (
+                    <option key={qs.questionSetId} value={qs.questionSetId} className="bg-slate-900 text-gray-100">
+                      {qs.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormInput
+                label="Number of Random Questions"
+                type="number"
+                value={numQuestions}
+                onChange={(e) => setNumQuestions(Number(e.target.value))}
+                required
+                min={1}
+              />
               <FormInput
                 label="Duration (minutes)"
                 type="number"
@@ -138,40 +174,6 @@ export default function AssessmentsTab() {
                 required
                 min={1}
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-300/90 mb-1.5 tracking-wide">
-                Select Questions
-                <span className="ml-2 text-violet-400">({selectedQuestionIds.size} selected)</span>
-              </label>
-              <input
-                type="text"
-                value={questionFilter}
-                onChange={(e) => setQuestionFilter(e.target.value)}
-                className="w-full rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-gray-100 placeholder-slate-500 outline-none transition-all duration-300 focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 focus:bg-white/[0.05] backdrop-blur-sm mb-3"
-                placeholder="Filter questions..."
-              />
-              <div className="max-h-60 overflow-y-auto rounded-xl border border-white/[0.06] bg-white/[0.02] divide-y divide-white/[0.04]">
-                {filteredQuestions.length === 0 ? (
-                  <p className="px-4 py-3 text-sm text-slate-500">No questions found</p>
-                ) : (
-                  filteredQuestions.map((q) => (
-                    <label
-                      key={q.questionId}
-                      className="flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors duration-200 hover:bg-white/[0.02]"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedQuestionIds.has(q.questionId)}
-                        onChange={() => toggleQuestion(q.questionId)}
-                        className="h-4 w-4 rounded border-white/10 bg-white/[0.03] text-violet-500 focus:ring-violet-500/20"
-                      />
-                      <span className="text-sm text-gray-200 line-clamp-1">{q.questionText}</span>
-                    </label>
-                  ))
-                )}
-              </div>
             </div>
 
             <GradientButton type="submit" disabled={saving}>
@@ -190,7 +192,10 @@ export default function AssessmentsTab() {
                 Title
               </th>
               <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
-                # Questions
+                Question Set
+              </th>
+              <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
+                Random Qs
               </th>
               <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
                 Duration
@@ -203,7 +208,7 @@ export default function AssessmentsTab() {
           <tbody>
             {assessments.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-12 text-center text-sm text-slate-500">
+                <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-500">
                   No assessments yet. Create one to get started.
                 </td>
               </tr>
@@ -214,7 +219,8 @@ export default function AssessmentsTab() {
                   className="border-b border-white/[0.03] transition-colors duration-200 hover:bg-white/[0.02]"
                 >
                   <td className="px-6 py-4 text-sm font-medium text-gray-200">{a.title}</td>
-                  <td className="px-6 py-4 text-sm text-slate-400">{a.questionIds.length}</td>
+                  <td className="px-6 py-4 text-sm text-slate-400">{getQuestionSetName(a.questionSetId)}</td>
+                  <td className="px-6 py-4 text-sm text-slate-400">{a.numQuestions}</td>
                   <td className="px-6 py-4 text-sm text-slate-400">{a.durationMinutes} min</td>
                   <td className="px-6 py-4 text-sm text-slate-500">
                     {new Date(a.createdAt).toLocaleDateString()}

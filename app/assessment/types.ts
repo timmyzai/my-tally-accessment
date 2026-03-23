@@ -1,10 +1,7 @@
 export interface QuestionData {
   questionId: string;
   questionText: string;
-  optionA: string;
-  optionB: string;
-  optionC: string;
-  optionD: string;
+  isOptional: boolean;
 }
 
 export interface NotStartedData {
@@ -18,13 +15,12 @@ export interface NotStartedData {
 export interface InProgressData {
   status: "IN_PROGRESS";
   questions: QuestionData[];
-  answers: { questionId: string; selectedAnswer: string }[];
+  answers: { questionId: string; answerText: string }[];
   remainingTime: number;
 }
 
 export interface CompletedData {
   status: "COMPLETED";
-  score: number;
   totalQuestions: number;
   answeredCount: number;
 }
@@ -32,7 +28,6 @@ export interface CompletedData {
 export type AssessmentData = NotStartedData | InProgressData | CompletedData;
 
 export interface CompletedResult {
-  score: number;
   totalQuestions: number;
   answeredCount: number;
 }

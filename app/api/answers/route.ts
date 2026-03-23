@@ -1,22 +1,13 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-const VALID_ANSWERS = new Set(["A", "B", "C", "D"]);
-
 export async function PUT(request: Request) {
   try {
-    const { token, questionId, selectedAnswer } = await request.json();
+    const { token, questionId, answerText } = await request.json();
 
-    if (!token || !questionId || !selectedAnswer) {
+    if (!token || !questionId) {
       return NextResponse.json(
-        { error: "token, questionId, and selectedAnswer are required" },
-        { status: 400 }
-      );
-    }
-
-    if (!VALID_ANSWERS.has(selectedAnswer)) {
-      return NextResponse.json(
-        { error: "selectedAnswer must be one of A, B, C, D" },
+        { error: "token and questionId are required" },
         { status: 400 }
       );
     }
@@ -35,9 +26,7 @@ export async function PUT(request: Request) {
 
     // Check if time has expired
     const now = Date.now();
-    const endTime = invite.endTime
-      ? new Date(invite.endTime).getTime()
-      : now;
+    const endTime = invite.endTime ? new Date(invite.endTime).getTime() : now;
 
     if (now >= endTime) {
       await db.updateInviteStatus(invite.inviteId, "COMPLETED");
@@ -47,16 +36,8 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Validate questionId is in the assessment's questionIds
-    const assessment = await db.getAssessmentById(invite.assessmentId);
-    if (!assessment) {
-      return NextResponse.json(
-        { error: "Assessment not found" },
-        { status: 404 }
-      );
-    }
-
-    if (!assessment.questionIds.includes(questionId)) {
+    // Validate questionId is in the assigned questions
+    if (invite.assignedQuestionIds && !invite.assignedQuestionIds.includes(questionId)) {
       return NextResponse.json(
         { error: "Question is not part of this assessment" },
         { status: 400 }
@@ -66,7 +47,7 @@ export async function PUT(request: Request) {
     await db.upsertAnswer({
       attemptId: invite.inviteId,
       questionId,
-      selectedAnswer,
+      answerText: answerText ?? "",
       updatedAt: new Date().toISOString(),
     });
 

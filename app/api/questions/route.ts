@@ -13,33 +13,20 @@ export async function GET() {
   }
 }
 
-const VALID_ANSWERS = new Set(["A", "B", "C", "D"]);
-
 export async function POST(request: Request) {
   try {
-    const { questionText, optionA, optionB, optionC, optionD, correctAnswer } =
-      await request.json();
+    const { questionText, isOptional, questionSetId } = await request.json();
 
-    if (
-      !questionText ||
-      !optionA ||
-      !optionB ||
-      !optionC ||
-      !optionD ||
-      !correctAnswer
-    ) {
+    if (!questionText || typeof questionText !== "string") {
       return NextResponse.json(
-        {
-          error:
-            "questionText, optionA, optionB, optionC, optionD, and correctAnswer are required",
-        },
+        { error: "questionText is required" },
         { status: 400 }
       );
     }
 
-    if (!VALID_ANSWERS.has(correctAnswer)) {
+    if (!questionSetId || typeof questionSetId !== "string") {
       return NextResponse.json(
-        { error: "correctAnswer must be one of A, B, C, D" },
+        { error: "questionSetId is required" },
         { status: 400 }
       );
     }
@@ -47,11 +34,8 @@ export async function POST(request: Request) {
     const question: Question = {
       questionId: uuidv4(),
       questionText,
-      optionA,
-      optionB,
-      optionC,
-      optionD,
-      correctAnswer,
+      isOptional: !!isOptional,
+      questionSetId,
       createdAt: new Date().toISOString(),
     };
 

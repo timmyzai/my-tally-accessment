@@ -56,7 +56,7 @@ function AssessmentContent() {
           const endTime = new Date(Date.now() + ipData.remainingTime * 1000).toISOString();
           const initialAnswers: Record<string, string> = {};
           for (const a of ipData.answers) {
-            initialAnswers[a.questionId] = a.selectedAnswer;
+            initialAnswers[a.questionId] = a.answerText;
           }
           setPlayerData({
             questions: ipData.questions,
@@ -152,7 +152,6 @@ function AssessmentContent() {
   if (completedResult) {
     return (
       <ScoreScreen
-        score={completedResult.score}
         totalQuestions={completedResult.totalQuestions}
         answeredCount={completedResult.answeredCount}
       />
@@ -177,7 +176,6 @@ function AssessmentContent() {
     const cd = data as CompletedData;
     return (
       <ScoreScreen
-        score={cd.score}
         totalQuestions={cd.totalQuestions}
         answeredCount={cd.answeredCount}
       />
@@ -289,7 +287,7 @@ function AssessmentContent() {
                   className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0"
                   style={{ background: "linear-gradient(135deg, #8b5cf6, #06b6d4)" }}
                 />
-                Each question has four options. Select the best answer.
+                Write your answer for each question in the text area provided.
               </li>
               <li className="flex items-start gap-3">
                 <span

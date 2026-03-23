@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { computeScore } from "@/lib/helpers";
 
 export async function POST(request: Request) {
   try {
@@ -31,29 +30,12 @@ export async function POST(request: Request) {
 
     await db.updateInviteStatus(invite.inviteId, "COMPLETED");
 
-    const assessment = await db.getAssessmentById(invite.assessmentId);
-    if (!assessment) {
-      return NextResponse.json(
-        { error: "Assessment not found" },
-        { status: 404 }
-      );
-    }
-
-    const [questions, answers] = await Promise.all([
-      db.getQuestionsByIds(assessment.questionIds),
-      db.getAnswersByAttemptId(invite.inviteId),
-    ]);
-
-    const { score, totalQuestions, answeredCount } = computeScore(
-      assessment.questionIds,
-      questions,
-      answers
-    );
+    const answers = await db.getAnswersByAttemptId(invite.inviteId);
+    const totalQuestions = invite.assignedQuestionIds?.length ?? 0;
 
     return NextResponse.json({
-      score,
       totalQuestions,
-      answeredCount,
+      answeredCount: answers.length,
     });
   } catch (error) {
     console.error("Error submitting assessment:", error);

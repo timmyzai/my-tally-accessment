@@ -1,7 +1,7 @@
 "use client";
 
 interface QuestionNavProps {
-  questions: { questionId: string }[];
+  questions: { questionId: string; isOptional: boolean }[];
   answers: Record<string, string>;
   currentIndex: number;
   onNavigate: (index: number) => void;
@@ -14,6 +14,9 @@ export default function QuestionNav({
   onNavigate,
 }: QuestionNavProps) {
   const answeredCount = Object.keys(answers).length;
+  const requiredUnansweredCount = questions.filter(
+    (q) => !q.isOptional && !(q.questionId in answers)
+  ).length;
 
   return (
     <div className="w-full max-w-3xl mx-auto">
@@ -45,12 +48,44 @@ export default function QuestionNav({
               {answeredCount}
             </span>
             {" "}of {questions.length} answered
+            {requiredUnansweredCount > 0 && (
+              <>
+                {" "}<span style={{ color: "#fbbf24" }}>
+                  {requiredUnansweredCount} required remaining
+                </span>
+              </>
+            )}
           </span>
         </div>
         <div className="flex flex-wrap gap-2">
           {questions.map((q, idx) => {
             const isAnswered = q.questionId in answers;
             const isCurrent = idx === currentIndex;
+            const isRequired = !q.isOptional;
+
+            // Determine styles based on state
+            let bg: string;
+            let borderStyle: string;
+            let textColor: string;
+
+            if (isAnswered) {
+              bg = "rgba(16, 185, 129, 0.12)";
+              borderStyle = "1px solid rgba(16, 185, 129, 0.25)";
+              textColor = "#34d399";
+            } else if (isRequired) {
+              bg = "rgba(245, 158, 11, 0.1)";
+              borderStyle = "1px solid rgba(245, 158, 11, 0.25)";
+              textColor = "#fbbf24";
+            } else {
+              bg = "rgba(255, 255, 255, 0.03)";
+              borderStyle = "1px solid rgba(255, 255, 255, 0.06)";
+              textColor = "rgba(148, 163, 184, 0.5)";
+            }
+
+            // Current question overrides border for the violet ring
+            if (isCurrent) {
+              borderStyle = "2px solid transparent";
+            }
 
             return (
               <button
@@ -58,19 +93,11 @@ export default function QuestionNav({
                 onClick={() => onNavigate(idx)}
                 className="relative flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold transition-all duration-300"
                 style={{
-                  background: isAnswered
-                    ? "rgba(16, 185, 129, 0.12)"
-                    : "rgba(255, 255, 255, 0.03)",
-                  border: isCurrent
-                    ? "2px solid transparent"
-                    : isAnswered
-                      ? "1px solid rgba(16, 185, 129, 0.25)"
-                      : "1px solid rgba(255, 255, 255, 0.06)",
-                  color: isAnswered
-                    ? "#34d399"
-                    : isCurrent
-                      ? "#c4b5fd"
-                      : "rgba(148, 163, 184, 0.5)",
+                  background: bg,
+                  border: borderStyle,
+                  color: isCurrent && !isAnswered
+                    ? "#c4b5fd"
+                    : textColor,
                   boxShadow: isCurrent
                     ? "0 0 0 2px #06060a, 0 0 0 4px #8b5cf6, 0 0 16px rgba(139, 92, 246, 0.25)"
                     : isAnswered
@@ -85,8 +112,8 @@ export default function QuestionNav({
                 }}
                 onMouseLeave={(e) => {
                   if (!isCurrent && !isAnswered) {
-                    e.currentTarget.style.background = "rgba(255, 255, 255, 0.03)";
-                    e.currentTarget.style.color = "rgba(148, 163, 184, 0.5)";
+                    e.currentTarget.style.background = bg;
+                    e.currentTarget.style.color = textColor;
                   }
                 }}
               >

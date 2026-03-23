@@ -1,18 +1,22 @@
+export interface QuestionSet {
+  questionSetId: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface Question {
   questionId: string;
   questionText: string;
-  optionA: string;
-  optionB: string;
-  optionC: string;
-  optionD: string;
-  correctAnswer: "A" | "B" | "C" | "D";
+  isOptional: boolean;
+  questionSetId: string;
   createdAt: string;
 }
 
 export interface Assessment {
   assessmentId: string;
   title: string;
-  questionIds: string[];
+  questionSetId: string;
+  numQuestions: number;
   durationMinutes: number;
   createdAt: string;
 }
@@ -29,6 +33,7 @@ export interface Invite {
   candidateId: string;
   token: string;
   status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+  assignedQuestionIds?: string[];
   startTime?: string;
   endTime?: string;
   createdAt: string;
@@ -37,8 +42,6 @@ export interface Invite {
 export interface Answer {
   attemptId: string; // same as inviteId
   questionId: string; // sort key
-  selectedAnswer: string;
+  answerText: string;
   updatedAt: string;
 }
-
-export type ClientQuestion = Omit<Question, "correctAnswer">;
